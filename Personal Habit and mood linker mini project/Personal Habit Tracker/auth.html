@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Habit & Mood Linker - Login</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .auth-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .auth-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .auth-header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .auth-content {
+            padding: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .auth-toggle {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .auth-toggle a {
+            color: #667eea;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .auth-toggle a:hover {
+            text-decoration: underline;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid #f5c6cb;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid #c3e6cb;
+        }
+
+        .password-requirements {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-header">
+            <h1>Habit Tracker</h1>
+            <p>Sign in to track your mood and habits</p>
+        </div>
+
+        <div class="auth-content">
+            <!-- Login Form -->
+            <div id="login-form">
+                <h2>Sign In</h2>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="login-email">Email:</label>
+                        <input type="email" id="login-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Password:</label>
+                        <input type="password" id="login-password" required>
+                    </div>
+                    <button type="submit" class="btn">Sign In</button>
+                </form>
+                <div class="auth-toggle">
+                    <p>Don't have an account? <a onclick="showRegister()">Sign Up</a></p>
+                    <p><a onclick="showForgotPassword()" style="font-size:0.95em;">Forgot Password?</a></p>
+                </div>
+            </div>
+
+            <!-- Forgot Password Form -->
+            <div id="forgot-form" style="display: none;">
+                <h2>Reset Password</h2>
+                <form id="forgotForm">
+                    <div class="form-group">
+                        <label for="forgot-email">Enter your email address:</label>
+                        <input type="email" id="forgot-email" required>
+                    </div>
+                    <button type="submit" class="btn">Send Reset Link</button>
+                </form>
+                <div class="auth-toggle">
+                    <p>Remembered? <a onclick="showLogin()">Sign In</a></p>
+                </div>
+            </div>
+
+            <!-- Reset Password (Set New) Form -->
+            <div id="reset-form" style="display: none;">
+                <h2>Set New Password</h2>
+                <form id="resetForm">
+                    <div class="form-group">
+                        <label for="reset-password">New Password:</label>
+                        <input type="password" id="reset-password" required minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label for="reset-confirm">Confirm New Password:</label>
+                        <input type="password" id="reset-confirm" required>
+                    </div>
+                    <button type="submit" class="btn">Set Password</button>
+                </form>
+            </div>
+
+            <!-- Register Form -->
+            <div id="register-form" style="display: none;">
+                <h2>Create Account</h2>
+                <form id="registerForm">
+                    <div class="form-group">
+                        <label for="register-name">Full Name:</label>
+                        <input type="text" id="register-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-email">Email:</label>
+                        <input type="email" id="register-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password">Password:</label>
+                        <input type="password" id="register-password" required minlength="6">
+                        <div class="password-requirements">
+                            Password must be at least 6 characters long
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-confirm">Confirm Password:</label>
+                        <input type="password" id="register-confirm" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <input type="checkbox" id="privacy-disclaimer" required>
+                        <label for="privacy-disclaimer" style="display:inline; font-size:0.97em;">
+                            I agree to the <strong>Privacy</strong> and <strong>Disclaimer</strong> statements below.
+                        </label>
+                    </div>
+                    <div style="font-size:0.93em; background:#f8f9fa; border:1px solid #e1e5e9; border-radius:7px; padding:10px 14px; margin-bottom:15px;">
+                        <strong>Privacy:</strong> Data is for personal use only and stays on your device.<br>
+                        <strong>Disclaimer:</strong> Insights are based on self-reported data and are for informational purposes only, not professional advice.
+                    </div>
+                    <button type="submit" class="btn">Create Account</button>
+                </form>
+                <div class="auth-toggle">
+                    <p>Already have an account? <a onclick="showLogin()">Sign In</a></p>
+                </div>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Processing...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simple user management (in real app, this would be server-side)
+        let users = [];
+        let currentUser = null;
+
+        // Debug function to check stored users
+        function checkStoredUsers() {
+            try {
+                const storedUsers = localStorage.getItem('habitTrackerUsers');
+                console.log('Raw stored users:', storedUsers);
+                if (!storedUsers) {
+                    console.log('No users found in localStorage');
+                    return [];
+                }
+                const parsedUsers = JSON.parse(storedUsers);
+                console.log('Parsed users:', parsedUsers);
+                if (!Array.isArray(parsedUsers)) {
+                    console.error('Stored users is not an array, resetting to empty array');
+                    localStorage.setItem('habitTrackerUsers', '[]');
+                    return [];
+                }
+                users = parsedUsers;
+                return parsedUsers;
+            } catch (error) {
+                console.error('Error checking stored users:', error);
+                return [];
+            }
+        }
+
+        // Load users on startup
+        function loadUsers() {
+            try {
+                const storedUsers = localStorage.getItem('habitTrackerUsers');
+                if (!storedUsers) {
+                    console.log('No users in storage, initializing empty array');
+                    localStorage.setItem('habitTrackerUsers', '[]');
+                    users = [];
+                } else {
+                    users = JSON.parse(storedUsers);
+                    if (!Array.isArray(users)) {
+                        console.error('Invalid users data, resetting');
+                        users = [];
+                        localStorage.setItem('habitTrackerUsers', '[]');
+                    }
+                }
+                console.log('Loaded users:', users);
+                return users;
+            } catch (error) {
+                console.error('Error loading users:', error);
+                users = [];
+                localStorage.setItem('habitTrackerUsers', '[]');
+                return users;
+            }
+        }
+
+        // Initialize users
+        loadUsers();
+
+        function showLogin() {
+            document.getElementById('login-form').style.display = 'block';
+            document.getElementById('register-form').style.display = 'none';
+            document.getElementById('forgot-form').style.display = 'none';
+            document.getElementById('reset-form').style.display = 'none';
+            clearMessages();
+        }
+
+        function showRegister() {
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('register-form').style.display = 'block';
+            document.getElementById('forgot-form').style.display = 'none';
+            document.getElementById('reset-form').style.display = 'none';
+            clearMessages();
+        }
+
+        function showForgotPassword() {
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('register-form').style.display = 'none';
+            document.getElementById('forgot-form').style.display = 'block';
+            document.getElementById('reset-form').style.display = 'none';
+            clearMessages();
+        }
+
+        function showResetPassword() {
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('register-form').style.display = 'none';
+            document.getElementById('forgot-form').style.display = 'none';
+            document.getElementById('reset-form').style.display = 'block';
+            clearMessages();
+        }
+
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function showMessage(message, type) {
+            clearMessages();
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type === 'success' ? 'success-message' : 'error-message';
+            messageDiv.textContent = message;
+            
+            const content = document.querySelector('.auth-content');
+            content.insertBefore(messageDiv, content.firstChild);
+        }
+
+        function clearMessages() {
+            const messages = document.querySelectorAll('.success-message, .error-message');
+            messages.forEach(msg => msg.remove());
+        }
+
+        function hashPassword(password) {
+            // Simple hash function (in production, use proper hashing)
+            let hash = 0;
+            for (let i = 0; i < password.length; i++) {
+                const char = password.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash; // Convert to 32-bit integer
+            }
+            return hash.toString();
+        }
+
+        function validateEmail(email) {
+            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(email);
+        }
+
+        function validatePassword(password) {
+            return password.length >= 6;
+        }
+
+        // Login form handler
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('login-email').value.trim().toLowerCase();
+            const password = document.getElementById('login-password').value;
+
+            if (!validateEmail(email)) {
+                showMessage('Please enter a valid email address', 'error');
+                return;
+            }
+
+            showLoading();
+
+            // Debug current state
+            console.log('Attempting login with:', email);
+            checkStoredUsers();
+
+            // Simulate API call delay
+            setTimeout(() => {
+                // Reload users before checking
+                loadUsers();
+                console.log('Users at login:', users);
+                
+                const user = users.find(u => u.email.trim().toLowerCase() === email);
+                console.log('Found user:', user);
+                
+                if (!user) {
+                    showMessage('No account found for this email. Please sign up first.', 'error');
+                    hideLoading();
+                    return;
+                }
+
+                const hashedPassword = hashPassword(password);
+                console.log('Attempting password match:');
+                console.log('Stored hash:', user.passwordHash);
+                console.log('Input hash:', hashedPassword);
+                console.log('Match:', user.passwordHash === hashedPassword);
+
+                if (user.passwordHash === hashedPassword) {
+                    currentUser = user;
+                    localStorage.setItem('currentUser', JSON.stringify(user));
+                    showMessage('Login successful! Redirecting...', 'success');
+                    
+                    // Ensure the redirect happens
+                    setTimeout(() => {
+                        console.log('Redirecting to index.html');
+                        window.location.replace('index.html');
+                    }, 1000);
+                } else {
+                    showMessage('Invalid email or password', 'error');
+                }
+                hideLoading();
+            }, 1000);
+        });
+
+        // Register form handler
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('register-name').value.trim();
+            const email = document.getElementById('register-email').value.trim().toLowerCase();
+            const password = document.getElementById('register-password').value;
+            const confirmPassword = document.getElementById('register-confirm').value;
+            const agreed = document.getElementById('privacy-disclaimer').checked;
+
+            // Validation
+            if (name.length < 2) {
+                showMessage('Name must be at least 2 characters long', 'error');
+                return;
+            }
+
+            if (!validateEmail(email)) {
+                showMessage('Please enter a valid email address', 'error');
+                return;
+            }
+
+            if (!validatePassword(password)) {
+                showMessage('Password must be at least 6 characters long', 'error');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                showMessage('Passwords do not match', 'error');
+                return;
+            }
+            if (!agreed) {
+                showMessage('You must agree to the Privacy and Disclaimer statements to create an account.', 'error');
+                return;
+            }
+
+            // Check if user already exists
+            if (users.find(u => u.email.trim().toLowerCase() === email)) {
+                showMessage('An account with this email already exists', 'error');
+                return;
+            }
+
+            showLoading();
+            console.log('Creating new user with email:', email);
+
+            // Simulate API call delay
+            setTimeout(() => {
+                const newUser = {
+                    id: Date.now().toString(),
+                    name: name,
+                    email: email,
+                    passwordHash: hashPassword(password),
+                    createdAt: new Date().toISOString()
+                };
+
+                // Load latest users before adding new one
+                users = loadUsers();
+                users.push(newUser);
+                
+                console.log('Saving user:', newUser);
+                console.log('All users before save:', users);
+                
+                try {
+                    const usersToSave = JSON.stringify(users);
+                    localStorage.setItem('habitTrackerUsers', usersToSave);
+                    console.log('Save successful. Saved data:', usersToSave);
+                    
+                    // Verify the save
+                    const savedUsers = JSON.parse(localStorage.getItem('habitTrackerUsers') || '[]');
+                    console.log('Verified saved users:', savedUsers);
+                    
+                    showMessage('Account created successfully! You can now sign in.', 'success');
+                    
+                    // Clear form and show login
+                    document.getElementById('registerForm').reset();
+                    setTimeout(() => {
+                        showLogin();
+                    }, 1500);
+                } catch (error) {
+                    console.error('Error saving user:', error);
+                    showMessage('Error creating account. Please try again.', 'error');
+                }
+                
+                hideLoading();
+            }, 1000);
+        });
+
+        // Forgot Password handler
+        let resetUserEmail = null;
+        document.getElementById('forgotForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('forgot-email').value.trim().toLowerCase();
+            
+            console.log('Attempting password reset for:', email);
+            checkStoredUsers();
+
+            if (!validateEmail(email)) {
+                showMessage('Please enter a valid email address', 'error');
+                return;
+            }
+
+            // Refresh users list before checking
+            users = JSON.parse(localStorage.getItem('habitTrackerUsers') || '[]');
+            const user = users.find(u => u.email.trim().toLowerCase() === email);
+            console.log('Found user for reset:', user);
+
+            if (!user) {
+                showMessage('No account found with this email.', 'error');
+                return;
+            }
+
+            resetUserEmail = email;
+            showMessage('A password reset link has been sent to your email (simulated). Please set your new password below.', 'success');
+            setTimeout(() => {
+                showResetPassword();
+            }, 1500);
+        });
+
+        // Reset Password handler
+        document.getElementById('resetForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const password = document.getElementById('reset-password').value;
+            const confirmPassword = document.getElementById('reset-confirm').value;
+            if (!validatePassword(password)) {
+                showMessage('Password must be at least 6 characters long', 'error');
+                return;
+            }
+            if (password !== confirmPassword) {
+                showMessage('Passwords do not match', 'error');
+                return;
+            }
+            // Update user password
+            const userIdx = users.findIndex(u => u.email.trim().toLowerCase() === resetUserEmail);
+            if (userIdx === -1) {
+                showMessage('Unexpected error. Please try again.', 'error');
+                showLogin();
+                return;
+            }
+            users[userIdx].passwordHash = hashPassword(password);
+            localStorage.setItem('habitTrackerUsers', JSON.stringify(users));
+            showMessage('Password reset successful! You can now sign in.', 'success');
+            setTimeout(() => {
+                showLogin();
+            }, 1500);
+        });
+
+        // Check if user is already logged in
+        window.addEventListener('load', function() {
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                // Redirect to main app if already logged in
+                window.location.href = 'index.html';
+            }
+        });
+    </script>
+</body>
+</html> 

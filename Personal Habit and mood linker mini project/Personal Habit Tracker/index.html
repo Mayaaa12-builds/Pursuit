@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Habit & Mood Linker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Basic Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Body Styling */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: url('https://media.macphun.com/img/uploads/macphun/blog/2367/beautiful-plants-landscape-soap-bubbles.jpg?q=75&w=1710&h=906&resize=cover') no-repeat center center fixed;
+            background-size: cover;
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            display: flex; /* Use flexbox for overall layout */
+            flex-direction: column;
+        }
+
+        /* Overlay for readability */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(102, 126, 234, 0.45);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Ensure main content is above overlay */
+        .container, .header, .content, .footer, #weather-bar, #privacy-banner, #city-modal {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 700px;
+            margin: 60px auto 60px auto;
+            background: rgba(255,255,255,0.93);
+            border-radius: 18px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+            overflow: hidden;
+            padding: 32px 28px;
+            flex-grow: 1; /* Allow container to grow and push footer down */
+        }
+
+        /* Header Styling */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 18px 18px 0 0; /* Match container border-radius */
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        /* Content Area */
+        .content {
+            padding: 30px;
+        }
+
+        /* Menu Grid */
+        .menu {
+            display: grid;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        /* Menu Buttons */
+        .menu-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .menu-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        /* Section Styling */
+        .form-section, .logs-section, .analytics-section, .summary-section {
+            display: none;
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .form-section.active, .logs-section.active, .analytics-section.active, .summary-section.active {
+            display: block;
+        }
+
+        /* Form Group Styling */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        /* Radio Group Styling */
+        .radio-group {
+            display: flex;
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+            gap: 20px;
+            margin-top: 10px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .radio-option input[type="radio"] {
+            width: auto;
+        }
+
+        /* Button Styling */
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            width: auto; /* Default to auto width for general buttons */
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        /* Log Entry Styling */
+        .log-entry {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        /* Summary Card Styling */
+        .summary-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 20px 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-left: 5px solid #667eea;
+        }
+
+        .summary-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .mood-indicator {
+            font-size: 2em;
+            padding: 10px;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .mood-excellent { background: #28a745; } /* Green */
+        .mood-good { background: #17a2b8; }    /* Cyan */
+        .mood-neutral { background: #ffc107; } /* Yellow */
+        .mood-poor { background: #fd7e14; }    /* Orange */
+        .mood-bad { background: #dc3545; }     /* Red */
+
+        /* Suggestion Card */
+        .suggestion-card {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .suggestion-card h4 {
+            color: #1976d2;
+            margin-bottom: 8px;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        /* Insight Section */
+        .insight-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .insight-section h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 0.97em;
+            color: #555;
+            background: #f8f9fa;
+            border-top: 1px solid #e1e5e9;
+            padding: 18px 20px; /* Add horizontal padding */
+            width: 100%; /* Ensure footer spans full width */
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 600px) {
+            .container {
+                margin: 20px auto;
+                padding: 20px;
+            }
+            .header {
+                padding: 20px;
+            }
+            .header h1 {
+                font-size: 1.8em;
+            }
+            .header p {
+                font-size: 1em;
+            }
+            .content {
+                padding: 20px;
+            }
+            .menu {
+                grid-template-columns: 1fr;
+            }
+            .log-details {
+                grid-template-columns: 1fr;
+            }
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            .radio-group {
+                flex-direction: column; /* Stack radio options vertically */
+            }
+            .radio-option {
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Privacy Banner Modal -->
+    <div id="privacy-banner" style="display:none; position:fixed; top:0; left:0; width:100vw; min-height:100vh; background:rgba(255,255,255,0.98); z-index:9999; display:flex; align-items:center; justify-content:center;">
+      <div style="max-width:600px; margin:40px auto; background:#f8f9fa; border-radius:12px; box-shadow:0 2px 16px rgba(0,0,0,0.08); padding:32px 28px; text-align:center; border:1px solid #e1e5e9;">
+        <h2 style="margin-bottom:18px;">Before You Continue</h2>
+        <div style="font-size:1.08em; margin-bottom:18px; text-align:left;">
+          <input type="checkbox" id="privacy-agree-checkbox" style="margin-right:10px; transform:scale(1.2); vertical-align:middle;">
+          <label for="privacy-agree-checkbox" style="vertical-align:middle;">
+            <strong>Privacy:</strong> Data is for personal use only and stays on your device.<br>
+            <strong>Important Disclaimer:</strong> This app is not a substitute for professional medical advice. While this tool can help you track patterns in your mood and habits, it is not intended to diagnose, treat, or prevent any medical condition. If you are experiencing persistent low mood, anxiety, depression, or other mental health concerns, please consult with a qualified healthcare professional, therapist, or counselor. Your mental health is important, and professional support is available.
+          </label>
+        </div>
+        <button id="privacy-agree-btn" class="btn" style="width:auto; padding:10px 30px; font-size:1.1em;">Agree & Continue</button>
+      </div>
+    </div>
+
+    <!-- Weather Bar -->
+    <div id="weather-bar" style="display:none; background:rgba(120,120,120,0.90); color:#f5f5f5; padding:18px 0 10px 0; text-align:center; font-size:1.1em; font-weight:500; box-shadow:0 2px 12px rgba(0,0,0,0.10); border-bottom:1.5px solid #888;">
+      <span id="weather-location"></span>
+      <span id="weather-desc"></span>
+      <span id="weather-temp"></span>
+      <span id="weather-extra"></span>
+      <button id="change-city-btn" style="margin-left:18px; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); border:none; color:white; border-radius:5px; padding:4px 16px; cursor:pointer; font-weight:600; box-shadow:0 2px 8px rgba(0,0,0,0.10); transition:background 0.2s;">Change City</button>
+    </div>
+
+    <!-- City Modal -->
+    <div id="city-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.25); z-index:10000; align-items:center; justify-content:center;">
+      <div style="background:white; border-radius:10px; padding:30px 24px; box-shadow:0 2px 16px rgba(0,0,0,0.12); min-width:320px; text-align:center;">
+        <h3>Enter Your City</h3>
+        <input id="city-input" type="text" placeholder="e.g. London" style="padding:10px; border-radius:6px; border:1px solid #ccc; width:80%; margin:18px 0; font-size:1.1em;">
+        <br>
+        <button id="save-city-btn" class="btn" style="width:auto;">Save</button>
+      </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div class="container">
+        <div class="header">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h1>Personal Habit & Mood Linker</h1>
+                    <p>Track your daily habits and mood to discover patterns</p>
+                </div>
+                <div style="text-align: right;">
+                    <p>Welcome, <span id="user-name">User</span>!</p>
+                    <button onclick="logout()" style="background: rgba(255,255,255,0.2); border: 1px solid white; color: white; padding: 8px 16px; border-radius: 5px; cursor: pointer;">Logout</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Main Menu -->
+            <div id="main-menu" class="menu active">
+                <button class="menu-btn" onclick="showRecordForm()">📝 Record Daily Log</button>
+                <button class="menu-btn" onclick="showLogs()">📊 View All Logs</button>
+                <button class="menu-btn" onclick="showAnalytics()">📈 Analytics & Charts</button>
+                <button class="menu-btn" onclick="showSummary()">🔍 5-Day Summary & Insights</button>
+                <button class="menu-btn btn-secondary" onclick="clearData()">🗑️ Clear All Data</button>
+            </div>
+
+            <!-- Record Daily Log Form -->
+            <div id="record-form" class="form-section">
+                <button class="back-btn" onclick="showMainMenu()">← Back to Menu</button>
+                <h2>Record Your Daily Log</h2>
+                <form id="daily-log-form">
+                    <div class="form-group">
+                        <label for="log-date">Date:</label>
+                        <input type="date" id="log-date" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Mood Rating:</label>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" name="mood" value="1" id="mood1" required>
+                                <label for="mood1">1 (Bad)</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" name="mood" value="2" id="mood2">
+                                <label for="mood2">2</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" name="mood" value="3" id="mood3">
+                                <label for="mood3">3 (Okay)</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" name="mood" value="4" id="mood4">
+                                <label for="mood4">4</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" name="mood" value="5" id="mood5">
+                                <label for="mood5">5 (Great)</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Did you exercise today?</label>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" name="exercise" value="true" id="exercise-yes" required>
+                                <label for="exercise-yes">Yes</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" name="exercise" value="false" id="exercise-no">
+                                <label for="exercise-no">No</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Did you get 7+ hours of sleep?</label>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" name="sleep" value="true" id="sleep-yes" required>
+                                <label for="sleep-yes">Yes</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" name="sleep" value="false" id="sleep-no">
+                                <label for="sleep-no">No</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Did you socialize today?</label>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" name="social" value="true" id="social-yes" required>
+                                <label for="social-yes">Yes</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" name="social" value="false" id="social-no">
+                                <label for="social-no">No</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Did you eat healthy meals today?</label>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" name="healthy" value="true" id="healthy-yes" required>
+                                <label for="healthy-yes">Yes</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" name="healthy" value="false" id="healthy-no">
+                                <label for="healthy-no">No</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="notes">Notes (optional):</label>
+                        <textarea id="notes" rows="3" placeholder="Any significant events or thoughts today..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn">Save Daily Log</button>
+                </form>
+            </div>
+
+            <!-- View All Logs Section -->
+            <div id="logs-section" class="logs-section">
+                <button class="back-btn" onclick="showMainMenu()">← Back to Menu</button>
+                <h2>Your Daily Logs</h2>
+                <div id="logs-container">
+                    <!-- Logs will be displayed here -->
+                </div>
+            </div>
+
+            <!-- Analytics & Charts Section -->
+            <div id="analytics-section" class="analytics-section">
+                <button class="back-btn" onclick="showMainMenu()">← Back to Menu</button>
+                <h2>Analytics & Charts</h2>
+                
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-number" id="total-entries">0</div>
+                        <div class="stat-label">Total Entries</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="avg-mood">0</div>
+                        <div class="stat-label">Avg Mood</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="exercise-rate">0%</div>
+                        <div class="stat-label">Exercise Rate</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="sleep-rate">0%</div>
+                        <div class="stat-label">Good Sleep Rate</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="social-rate">0%</div>
+                        <div class="stat-label">Social Rate</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="healthy-rate">0%</div>
+                        <div class="stat-label">Healthy Eating Rate</div>
+                    </div>
+                </div>
+
+                <div class="chart-grid">
+                    <div class="chart-container">
+                        <h3>Mood Over Time</h3>
+                        <canvas id="moodChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Habit Correlation with Mood</h3>
+                        <canvas id="habitChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h3>Weekly Habit Breakdown</h3>
+                    <canvas id="weeklyChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 5-Day Summary & Insights Section -->
+            <div id="summary-section" class="summary-section">
+                <button class="back-btn" onclick="showMainMenu()">← Back to Menu</button>
+                <h2>5-Day Summary & Insights</h2>
+                <div id="summary-container">
+                    <!-- Summary will be displayed here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer style="margin-top:40px; text-align:center; font-size:0.97em; color:#555; background:#f8f9fa; border-top:1px solid #e1e5e9; padding:18px 0;">
+        <strong>Privacy:</strong> Data is for personal use only and stays on your device.<br>
+        <strong>Important Disclaimer:</strong> This app is not a substitute for professional medical advice. While this tool can help you track patterns in your mood and habits, it is not intended to diagnose, treat, or prevent any medical condition. If you are experiencing persistent low mood, anxiety, depression, or other mental health concerns, please consult with a qualified healthcare professional, therapist, or counselor. Your mental health is important, and professional support is available.
+    </footer>
+
+    <script>
+        // Initialize with today's date
+        document.getElementById('log-date').valueAsDate = new Date();
+
+        // --- Global Variables ---
+        let currentUser = null; // Stores the current logged-in user
+        let dailyLogs = []; // Stores logs for the current user
+        let moodChartInstance = null;
+        let habitChartInstance = null;
+        let weeklyChartInstance = null;
+
+        // --- Weather API Integration ---
+        let userCity = null;
+        let todayWeather = null;
+
+        function showCityModal() {
+            document.getElementById('city-modal').style.display = 'flex';
+            document.getElementById('city-input').value = userCity || '';
+        }
+
+        function hideCityModal() {
+            document.getElementById('city-modal').style.display = 'none';
+        }
+
+        function saveCity(city) {
+            userCity = city.trim();
+            if (userCity.length < 2) {
+                // Using a custom message box instead of alert()
+                showMessage('Please enter a valid city name with at least 2 characters.', 'error');
+                return;
+            }
+            if (currentUser && userCity) {
+                localStorage.setItem(`weatherCity_${currentUser.id}`, userCity);
+            }
+            hideCityModal();
+            fetchAndDisplayWeather();
+        }
+
+        function fetchAndDisplayWeather() {
+            if (!userCity) {
+                showCityModal();
+                return;
+            }
+            // wttr.in API (returns JSON)
+            fetch(`https://wttr.in/${encodeURIComponent(userCity)}?format=j1`)
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error(`City not found: ${userCity}`);
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    // Check if the location is imaginary or doesn't exist
+                    // Also check if the returned city is completely different from what was requested
+                    const returnedCity = data?.nearest_area?.[0]?.areaName?.[0]?.value || '';
+                    const returnedCountry = data?.nearest_area?.[0]?.country?.[0]?.value || '';
+                    
+                    // Check if the API returned a completely different location
+                    const userCityLower = userCity.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    const returnedCityLower = returnedCity.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    
+                    if (data && (!data.nearest_area || data.nearest_area.length === 0 || 
+                        (userCityLower && returnedCityLower && !returnedCityLower.includes(userCityLower) && !userCityLower.includes(returnedCityLower)))) {
+                        document.getElementById('weather-bar').style.display = 'block';
+                        document.getElementById('weather-location').textContent = '';
+                        let errorMsg = `⚠️ Error: "${userCity}" doesn't exist.`;
+                        if (returnedCity && returnedCountry) {
+                            errorMsg += ` Did you mean "${returnedCity}, ${returnedCountry}"?`;
+                        }
+                        errorMsg += " Please enter a valid city name.";
+                        document.getElementById('weather-desc').textContent = errorMsg;
+                        document.getElementById('weather-temp').textContent = '';
+                        document.getElementById('weather-extra').textContent = '';
+                        // Show city modal to correct the city name
+                        setTimeout(() => showCityModal(), 1500);
+                        return;
+                    }
+                    
+                    if (!data || !data.current_condition || !data.current_condition[0] || (data.nearest_area && data.nearest_area[0] && data.nearest_area[0].country === 'Antarctica')) {
+                        document.getElementById('weather-bar').style.display = 'block';
+                        document.getElementById('weather-bar').innerHTML = `
+                          <span style='color:#d9534f; font-weight:600; font-size:1.1em;'>⚠️ City not found. Please enter a real city name.</span>
+                          <button id="change-city-btn" style="margin-left:18px; background:linear-gradient(135deg, #667EEA 0%, #764BA2 100%); border:none; color:white; border-radius:5px; padding:4px 16px; cursor:pointer; font-weight:600; box-shadow:0 2px 8px rgba(0,0,0,0.10); transition:background 0.2s;">Change City</button>
+                        `;
+                        document.getElementById('change-city-btn').onclick = showCityModal;
+                        return;
+                    }
+                    const cond = data.current_condition[0];
+                    todayWeather = {
+                        city: userCity,
+                        country: '',
+                        temp: cond.temp_C,
+                        desc: cond.weatherDesc[0].value,
+                        humidity: cond.humidity,
+                        wind: cond.windspeedKmph,
+                        feelslike: cond.FeelsLikeC
+                    };
+                    // Smart weather warnings and emojis (always visible if close to threshold)
+                    let weatherWarning = '';
+                    let weatherEmoji = '';
+                    let weatherTip = '';
+                    const descLower = todayWeather.desc.toLowerCase();
+                    const temp = Number(todayWeather.temp);
+                    const humidity = Number(todayWeather.humidity);
+                    const feelslike = Number(todayWeather.feelslike);
+                    if (descLower.includes('storm') || descLower.includes('thunder') || descLower.includes('severe')) {
+                        weatherWarning = '⚠️ Severe Storm Warning!';
+                        weatherEmoji = '⛈️';
+                        weatherTip = 'Stay indoors and stay safe!';
+                    }
+                    // Always show heat/humidity warning if temp or feelslike >= 28 and humidity >= 70
+                    if ((temp >= 28 || feelslike >= 28) && humidity >= 70) {
+                        weatherWarning = '🥵 Very Hot & Humid!';
+                        weatherEmoji = '🥵';
+                        weatherTip = 'Stay cool and hydrated!';
+                    } else if (!weatherWarning && descLower.includes('rain')) {
+                        weatherEmoji = '🌧️';
+                        weatherTip = 'Carry an umbrella!';
+                    } else if (!weatherWarning && descLower.includes('snow')) {
+                        weatherEmoji = '❄️';
+                        weatherTip = 'Dress warmly!';
+                    }
+                    // Always attach these to todayWeather for log saving
+                    todayWeather.weatherWarning = weatherWarning;
+                    todayWeather.weatherEmoji = weatherEmoji;
+                    todayWeather.weatherTip = weatherTip;
+                    // Render the weather bar using the provided HTML structure and Unicode emoji
+                    document.getElementById('weather-bar').style.display = 'block';
+                    document.getElementById('weather-bar').innerHTML = `
+      <span id="weather-location">${todayWeather.city} | </span>
+      <span id="weather-desc">${weatherEmoji ? weatherEmoji : ''} ${todayWeather.desc} </span>
+      <span id="weather-temp">| ${todayWeather.temp}°C (feels like ${todayWeather.feelslike}°C) </span>
+      <span id="weather-extra">| Humidity: ${todayWeather.humidity}% | Wind: ${todayWeather.wind} km/h ${
+                        ((temp >= 28 || feelslike >= 28) && humidity >= 70) ? `<span style="display:inline-block; background:#fff; color:#d9534f; border-radius:7px; padding:3px 12px; margin-left:12px; font-weight:600; font-size:1.08em; box-shadow:0 1px 6px rgba(0,0,0,0.07);">🥵 <span style='color:#d9534f; font-weight:bold;'>🥵 Very Hot & Humid!</span><span style='color:#1976d2; margin-left:10px;'>Stay cool and hydrated!</span></span>` :
+                        (weatherWarning && weatherWarning !== '🥵 Very Hot & Humid!') ? `<span style="display:inline-block; background:#fff; color:#d9534f; border-radius:7px; padding:3px 12px; margin-left:12px; font-weight:600; font-size:1.08em; box-shadow:0 1px 6px rgba(0,0,0,0.07);">${weatherEmoji ? weatherEmoji + ' ' : ''}<span style='color:#d9534f; font-weight:bold;'>${weatherWarning}</span>${weatherTip ? `<span style='color:#1976d2; margin-left:10px;'>${weatherTip}</span>` : ''}</span>` : ''
+                    }</span>
+      <button id="change-city-btn" style="margin-left:18px; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); border:none; color:white; border-radius:5px; padding:4px 16px; cursor:pointer; font-weight:600; box-shadow:0 2px 8px rgba(0,0,0,0.10); transition:background 0.2s;">Change City</button>
+    `;
+                    document.getElementById('change-city-btn').onclick = showCityModal;
+                })
+                .catch((error) => {
+                    console.error('Weather fetch error:', error);
+                    document.getElementById('weather-bar').style.display = 'block';
+                    document.getElementById('weather-location').textContent = '';
+                    
+                    // Check if the error is related to a non-existent city
+                    if (error.message && error.message.includes('City not found')) {
+                        let errorMsg = `⚠️ Error: "${userCity}" doesn't exist. Please enter a valid city name.`;
+                        document.getElementById('weather-desc').textContent = errorMsg;
+                        // Show city modal to correct the city name
+                        setTimeout(() => showCityModal(), 1500);
+                    } else {
+                        document.getElementById('weather-desc').textContent = `⚠️ Error: Unable to fetch weather data. Please check your city name.`;
+                    }
+                    
+                    document.getElementById('weather-temp').textContent = '';
+                    document.getElementById('weather-extra').textContent = '';
+                    console.error('Weather fetch error:', error);
+                });
+        }
+
+        document.getElementById('change-city-btn').onclick = showCityModal;
+        document.getElementById('save-city-btn').onclick = function() {
+            const city = document.getElementById('city-input').value;
+            if (city.trim().length < 2) {
+                showMessage('Please enter a valid city name with at least 2 characters.', 'error');
+                return;
+            }
+            saveCity(city);
+        };
+        document.getElementById('city-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('save-city-btn').click();
+            }
+        });
+        document.getElementById('city-modal').onclick = function(e) {
+            if (e.target === this) hideCityModal();
+        };
+
+        // --- Authentication Functions ---
+        function checkAuth() {
+            const savedUser = localStorage.getItem('currentUser');
+            if (!savedUser) {
+                window.location.href = 'auth.html'; // Redirect to login if not authenticated
+                return;
+            }
+            currentUser = JSON.parse(savedUser);
+            document.getElementById('user-name').textContent = currentUser.name;
+            loadDailyLogs(); // Load logs for the authenticated user
+        }
+
+        function logout() {
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem(`dailyLogs_${currentUser.id}`); // Clear user-specific logs
+            localStorage.removeItem(`weatherCity_${currentUser.id}`); // Clear user-specific city
+            localStorage.removeItem(`privacyAgreed_${currentUser.id}`); // Clear user-specific privacy agreement
+            window.location.href = 'auth.html';
+        }
+
+        // --- UI Navigation Functions ---
+        function hideAllSections() {
+            document.querySelectorAll('.form-section, .logs-section, .analytics-section, .summary-section, #main-menu').forEach(section => {
+                section.style.display = 'none';
+                section.classList.remove('active');
+            });
+            clearMessages();
+        }
+
+        function showMainMenu() {
+            hideAllSections();
+            document.getElementById('main-menu').style.display = 'grid';
+            document.getElementById('main-menu').classList.add('active');
+        }
+
+        // Add this function to pre-fill the daily log form with saved values
+        function prefillDailyLogForm(dateStr) {
+            // Find the log for the given date
+            let log = dailyLogs.find(log => {
+                let d = log.date;
+                if (d instanceof Date) d = d.toISOString().slice(0, 10);
+                return d === dateStr;
+            });
+            if (!log) return;
+            // Set mood
+            if (log.mood) {
+                const moodRadio = document.querySelector(`input[name='mood'][value='${log.mood}']`);
+                if (moodRadio) moodRadio.checked = true;
+            }
+            // Set exercise
+            if (typeof log.exercise === 'boolean') {
+                document.querySelector(`input[name='exercise'][value='${log.exercise}']`).checked = true;
+            }
+            // Set sleep
+            if (typeof log.sleep === 'boolean') {
+                document.querySelector(`input[name='sleep'][value='${log.sleep}']`).checked = true;
+            }
+            // Set social
+            if (typeof log.social === 'boolean') {
+                document.querySelector(`input[name='social'][value='${log.social}']`).checked = true;
+            }
+            // Set healthy
+            if (typeof log.healthy === 'boolean') {
+                document.querySelector(`input[name='healthy'][value='${log.healthy}']`).checked = true;
+            }
+            // Set notes
+            if (log.notes) {
+                document.getElementById('notes').value = log.notes;
+            }
+        }
+
+        // When showing the record form, prefill if a log exists for the selected date
+        const logDateInput = document.getElementById('log-date');
+        if (logDateInput) {
+            logDateInput.addEventListener('change', function() {
+                prefillDailyLogForm(this.value);
+            });
+        }
+
+        // When showing the record form, also prefill for today by default
+        function showRecordForm() {
+            hideAllSections();
+            document.getElementById('record-form').style.display = 'block';
+            document.getElementById('record-form').classList.add('active');
+            document.getElementById('log-date').valueAsDate = new Date(); // Reset date to today
+            document.getElementById('daily-log-form').reset(); // Clear form fields
+            // Prefill for today's date
+            if (logDateInput) prefillDailyLogForm(logDateInput.value);
+        }
+
+        function showLogs() {
+            hideAllSections();
+            document.getElementById('logs-section').style.display = 'block';
+            document.getElementById('logs-section').classList.add('active');
+            displayLogs(); // Refresh and display all logs
+        }
+
+        function showAnalytics() {
+            hideAllSections();
+            document.getElementById('analytics-section').style.display = 'block';
+            document.getElementById('analytics-section').classList.add('active');
+            renderAnalytics(); // Generate and display charts
+        }
+
+        function showSummary() {
+            hideAllSections();
+            document.getElementById('summary-section').style.display = 'block';
+            document.getElementById('summary-section').classList.add('active');
+            renderSummary(); // Generate and display 5-day summary
+        }
+
+        // --- Message Display Functions (replaces alert/confirm) ---
+        function showMessage(message, type) {
+            clearMessages();
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type === 'success' ? 'success-message' : 'error-message';
+            messageDiv.textContent = message;
+            
+            const content = document.querySelector('.content'); // Insert into content area
+            content.insertBefore(messageDiv, content.firstChild);
+
+            // Auto-hide messages after 3 seconds
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 3000);
+        }
+
+        function clearMessages() {
+            const messages = document.querySelectorAll('.success-message, .error-message');
+            messages.forEach(msg => msg.remove());
+        }
+
+        // --- Data Management Functions ---
+        function loadDailyLogs() {
+            if (currentUser) {
+                const storedLogs = localStorage.getItem(`dailyLogs_${currentUser.id}`);
+                dailyLogs = storedLogs ? JSON.parse(storedLogs) : [];
+                // Ensure logs are sorted by date descending for display
+                dailyLogs.sort((a, b) => new Date(b.date) - new Date(a.date));
+            }
+        }
+
+        function saveDailyLogs() {
+            if (currentUser) {
+                localStorage.setItem(`dailyLogs_${currentUser.id}`, JSON.stringify(dailyLogs));
+            }
+        }
+
+        function clearData() {
+            // Using a custom confirmation dialog
+            const confirmClear = document.createElement('div');
+            confirmClear.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+                background: rgba(0,0,0,0.5); z-index: 10001; display: flex;
+                align-items: center; justify-content: center;
+            `;
+            confirmClear.innerHTML = `
+                <div style="background:white; padding:30px; border-radius:10px; box-shadow:0 5px 15px rgba(0,0,0,0.3); text-align:center; max-width:400px;">
+                    <h3>Are you sure?</h3>
+                    <p style="margin:15px 0;">This will permanently delete ALL your daily log data.</p>
+                    <button id="confirm-yes" class="btn" style="margin-right:10px;">Yes, Delete All</button>
+                    <button id="confirm-no" class="btn btn-secondary">No, Keep Data</button>
+                </div>
+            `;
+            document.body.appendChild(confirmClear);
+
+            document.getElementById('confirm-yes').onclick = () => {
+                dailyLogs = []; // Clear in-memory array
+                saveDailyLogs(); // Save empty array to localStorage
+                showMessage('All data cleared successfully!', 'success');
+                confirmClear.remove();
+                showMainMenu(); // Go back to main menu
+            };
+
+            document.getElementById('confirm-no').onclick = () => {
+                confirmClear.remove();
+            };
+        }
+
+        // --- Daily Log Form Submission ---
+        document.getElementById('daily-log-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const date = document.getElementById('log-date').value;
+            const mood = document.querySelector('input[name="mood"]:checked').value;
+            // Correctly parse boolean values from string "true"/"false"
+            const exercise = document.querySelector('input[name="exercise"]:checked').value === 'true';
+            const sleep = document.querySelector('input[name="sleep"]:checked').value === 'true';
+            const social = document.querySelector('input[name="social"]:checked').value === 'true';
+            const healthy = document.querySelector('input[name="healthy"]:checked').value === 'true';
+            const notes = document.getElementById('notes').value.trim();
+
+            // Check for duplicate date entry for the current user
+            const existingLogIndex = dailyLogs.findIndex(log => log.date === date);
+
+            const newLog = {
+                date: date,
+                mood: parseInt(mood), // Convert mood to integer
+                exercise: exercise,
+                sleep: sleep,
+                social: social,
+                healthy: healthy,
+                notes: notes,
+                weather: todayWeather // Include current weather data
+            };
+
+            if (existingLogIndex !== -1) {
+                // Update existing log
+                dailyLogs[existingLogIndex] = newLog;
+                showMessage('Log updated successfully!', 'success');
+            } else {
+                // Add new log
+                dailyLogs.push(newLog);
+                showMessage('Daily log saved successfully!', 'success');
+            }
+            
+            saveDailyLogs(); // Save to localStorage
+            dailyLogs.sort((a, b) => new Date(b.date) - new Date(a.date)); // Re-sort after saving/updating
+
+            // Clear form after submission
+            document.getElementById('daily-log-form').reset();
+            document.getElementById('log-date').valueAsDate = new Date(); // Reset date to today
+            // Uncheck radio buttons
+            document.querySelectorAll('input[name="mood"]').forEach(radio => radio.checked = false);
+            document.querySelectorAll('input[name="exercise"]').forEach(radio => radio.checked = false);
+            document.querySelectorAll('input[name="sleep"]').forEach(radio => radio.checked = false);
+            document.querySelectorAll('input[name="social"]').forEach(radio => radio.checked = false);
+            document.querySelectorAll('input[name="healthy"]').forEach(radio => radio.checked = false);
+
+            // After saving, you might want to show logs or go back to main menu
+            setTimeout(() => showMainMenu(), 1500);
+        });
+
+        // --- Display Logs Function ---
+        function getCheckMark(value) {
+            // This function now correctly returns a checkmark or cross based on actual boolean value
+            return value ? '✅ Yes' : '❌ No';
+        }
+
+        function displayLogs() {
+            const logsContainer = document.getElementById('logs-container');
+            logsContainer.innerHTML = ''; // Clear previous logs
+
+            if (dailyLogs.length === 0) {
+                logsContainer.innerHTML = '<p>No logs recorded yet. Start by recording your first daily log!</p>';
+                return;
+            }
+
+            dailyLogs.forEach(log => {
+                const logEntry = document.createElement('div');
+                logEntry.className = 'log-entry';
+                logEntry.style.background = '#fff';
+                logEntry.style.borderRadius = '14px';
+                logEntry.style.boxShadow = '0 2px 8px rgba(102,126,234,0.07)';
+                logEntry.style.marginBottom = '24px';
+                logEntry.style.padding = '28px 20px 20px 20px';
+                logEntry.innerHTML = `
+                    <div class="log-date" style="font-weight:600; font-size:1.1em; margin-bottom:10px;">${new Date(Date.parse(log.date + 'T00:00:00-04:00')).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', timeZone: 'America/New_York' })}</div>
+                    <div class="log-details" style="margin-bottom:8px;">
+                        <div style="margin-bottom:6px;"><b>Mood:</b> ${log.mood} / 5</div>
+                        <div style="margin-bottom:6px;"><b>Exercise:</b> ${log.exercise ? '<span style=\"color:#28a745;font-size:1.2em;\">✅</span> Yes' : '<span style=\"color:#dc3545;font-size:1.2em;\">❌</span> No'}</div>
+                        <div style="margin-bottom:6px;"><b>Sleep (7+ hrs):</b> ${log.sleep ? '<span style=\"color:#28a745;font-size:1.2em;\">✅</span> Yes' : '<span style=\"color:#dc3545;font-size:1.2em;\">❌</span> No'}</div>
+                        <div style="margin-bottom:6px;"><b>Socialized:</b> ${log.social ? '<span style=\"color:#28a745;font-size:1.2em;\">✅</span> Yes' : '<span style=\"color:#dc3545;font-size:1.2em;\">❌</span> No'}</div>
+                        <div style="margin-bottom:6px;"><b>Healthy Meals:</b> ${log.healthy ? '<span style=\"color:#28a745;font-size:1.2em;\">✅</span> Yes' : '<span style=\"color:#dc3545;font-size:1.2em;\">❌</span> No'}</div>
+                        ${log.notes ? `<div style=\"margin-bottom:6px;\"><b>Notes:</b> ${log.notes}</div>` : ''}
+                        ${log.weather && log.weather.city ? `<div style=\"margin-bottom:6px;\"><b>Weather:</b> ${log.weather.city}${log.weather.country ? ', ' + log.weather.country : ''} | ${log.weather.desc || ''} | ${log.weather.temp ? log.weather.temp + '°C' : ''}${log.weather.feelslike ? ' (feels like ' + log.weather.feelslike + '°C)' : ''}</div>` : ''}
+                    </div>
+                `;
+                logsContainer.appendChild(logEntry);
+            });
+        }
+
+        // --- Chart & Analytics Functions ---
+        function renderAnalytics() {
+            if (dailyLogs.length === 0) {
+                document.getElementById('total-entries').textContent = '0';
+                document.getElementById('avg-mood').textContent = '0';
+                document.getElementById('exercise-rate').textContent = '0%';
+                document.getElementById('sleep-rate').textContent = '0%';
+                document.getElementById('social-rate').textContent = '0%';
+                document.getElementById('healthy-rate').textContent = '0%';
+                
+                // Destroy existing charts if no data
+                if (moodChartInstance) moodChartInstance.destroy();
+                if (habitChartInstance) habitChartInstance.destroy();
+                if (weeklyChartInstance) weeklyChartInstance.destroy();
+
+                document.getElementById('moodChart').getContext('2d').clearRect(0, 0, document.getElementById('moodChart').width, document.getElementById('moodChart').height);
+                document.getElementById('habitChart').getContext('2d').clearRect(0, 0, document.getElementById('habitChart').width, document.getElementById('habitChart').height);
+                document.getElementById('weeklyChart').getContext('2d').clearRect(0, 0, document.getElementById('weeklyChart').width, document.getElementById('weeklyChart').height);
+
+                return;
+            }
+
+            // Calculate statistics
+            const totalEntries = dailyLogs.length;
+            const moodSum = dailyLogs.reduce((sum, log) => sum + log.mood, 0);
+            const avgMood = (moodSum / totalEntries).toFixed(1);
+
+            const calculateRate = (habit) => {
+                const count = dailyLogs.filter(log => log[habit]).length;
+                return ((count / totalEntries) * 100).toFixed(0);
+            };
+
+            const exerciseRate = calculateRate('exercise');
+            const sleepRate = calculateRate('sleep');
+            const socialRate = calculateRate('social');
+            const healthyRate = calculateRate('healthy');
+
+            document.getElementById('total-entries').textContent = totalEntries;
+            document.getElementById('avg-mood').textContent = avgMood;
+            document.getElementById('exercise-rate').textContent = `${exerciseRate}%`;
+            document.getElementById('sleep-rate').textContent = `${sleepRate}%`;
+            document.getElementById('social-rate').textContent = `${socialRate}%`;
+            document.getElementById('healthy-rate').textContent = `${healthyRate}%`;
+
+            // Mood Over Time Chart
+            const moodLabels = dailyLogs.map(log => new Date(log.date).toDateString('en-US', { month: 'short', day: 'numeric' })).reverse();
+            const moodData = dailyLogs.map(log => log.mood).reverse();
+
+            if (moodChartInstance) moodChartInstance.destroy();
+            const moodCtx = document.getElementById('moodChart').getContext('2d');
+            moodChartInstance = new Chart(moodCtx, {
+                type: 'line',
+                data: {
+                    labels: moodLabels,
+                    datasets: [{
+                        label: 'Mood Rating',
+                        data: moodData,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 5,
+                            ticks: { stepSize: 1 }
+                        }
+                    }
+                }
+            });
+
+            // Habit Correlation with Mood Chart
+            const habitMoodData = {
+                exercise: { totalMood: 0, count: 0 },
+                sleep: { totalMood: 0, count: 0 },
+                social: { totalMood: 0, count: 0 },
+                healthy: { totalMood: 0, count: 0 }
+            };
+
+            dailyLogs.forEach(log => {
+                if (log.exercise) { habitMoodData.exercise.totalMood += log.mood; habitMoodData.exercise.count++; }
+                if (log.sleep) { habitMoodData.sleep.totalMood += log.mood; habitMoodData.sleep.count++; }
+                if (log.social) { habitMoodData.social.totalMood += log.mood; habitMoodData.social.count++; }
+                if (log.healthy) { habitMoodData.healthy.totalMood += log.mood; habitMoodData.healthy.count++; }
+            });
+
+            const habitLabels = ['Exercise', 'Sleep', 'Social', 'Healthy Meals'];
+            const habitAvgMoods = [
+                habitMoodData.exercise.count > 0 ? (habitMoodData.exercise.totalMood / habitMoodData.exercise.count).toFixed(1) : 0,
+                habitMoodData.sleep.count > 0 ? (habitMoodData.sleep.totalMood / habitMoodData.sleep.count).toFixed(1) : 0,
+                habitMoodData.social.count > 0 ? (habitMoodData.social.totalMood / habitMoodData.social.count).toFixed(1) : 0,
+                habitMoodData.healthy.count > 0 ? (habitMoodData.healthy.totalMood / habitMoodData.healthy.count).toFixed(1) : 0
+            ];
+
+            if (habitChartInstance) habitChartInstance.destroy();
+            const habitCtx = document.getElementById('habitChart').getContext('2d');
+            habitChartInstance = new Chart(habitCtx, {
+                type: 'bar',
+                data: {
+                    labels: habitLabels,
+                    datasets: [{
+                        label: 'Average Mood When Habit Done',
+                        data: habitAvgMoods,
+                        backgroundColor: ['#28a745', '#17a2b8', '#ffc107', '#667eea'],
+                        borderColor: ['#28a745', '#17a2b8', '#ffc107', '#667eea'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 5,
+                            ticks: { stepSize: 1 }
+                        }
+                    }
+                }
+            });
+
+            // Weekly Habit Breakdown Chart (Pie Chart)
+            const weeklyHabitCounts = {
+                exercise: 0,
+                sleep: 0,
+                social: 0,
+                healthy: 0
+            };
+            const last7DaysLogs = dailyLogs.filter(log => {
+                const logDate = new Date(log.date);
+                const sevenDaysAgo = new Date();
+                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                return logDate >= sevenDaysAgo;
+            });
+
+            last7DaysLogs.forEach(log => {
+                if (log.exercise) weeklyHabitCounts.exercise++;
+                if (log.sleep) weeklyHabitCounts.sleep++;
+                if (log.social) weeklyHabitCounts.social++;
+                if (log.healthy) weeklyHabitCounts.healthy++;
+            });
+
+            const weeklyLabels = ['Exercise', 'Sleep', 'Social', 'Healthy Meals'];
+            const weeklyData = [
+                weeklyHabitCounts.exercise,
+                weeklyHabitCounts.sleep,
+                weeklyHabitCounts.social,
+                weeklyHabitCounts.healthy
+            ];
+
+            if (weeklyChartInstance) weeklyChartInstance.destroy();
+            const weeklyCtx = document.getElementById('weeklyChart').getContext('2d');
+            weeklyChartInstance = new Chart(weeklyCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: weeklyLabels,
+                    datasets: [{
+                        label: 'Habit Count (Last 7 Days)',
+                        data: weeklyData,
+                        backgroundColor: ['#28a745', '#17a2b8', '#ffc107', '#667eea'],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Habit Frequency in Last 7 Days'
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- 5-Day Summary & Insights ---
+        function renderSummary() {
+            const summaryContainer = document.getElementById('summary-container');
+            summaryContainer.innerHTML = ''; // Clear previous summary
+
+            if (dailyLogs.length === 0) {
+                summaryContainer.innerHTML = '<p>No logs recorded yet to generate a summary.</p>';
+                return;
+            }
+
+            const recentLogs = dailyLogs.slice(0, 5); // Get the 5 most recent logs
+
+            recentLogs.forEach(log => {
+                const moodEmoji = getMoodEmoji(log.mood);
+                const moodClass = getMoodClass(log.mood);
+
+                const summaryCard = document.createElement('div');
+                summaryCard.className = 'summary-card';
+                summaryCard.innerHTML = `
+                    <div class="summary-header">
+                        <div class="mood-indicator ${moodClass}">${moodEmoji}</div>
+                        <div>
+                            <h3>${new Date(log.date).toDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</h3>
+                            <p>Mood: ${log.mood} / 5</p>
+                        </div>
+                    </div>
+                    <div class="log-details">
+                        <div class="log-item"><strong>Exercise:</strong> ${getCheckMark(log.exercise)}</div>
+                        <div class="log-item"><strong>Sleep (7+ hrs):</strong> ${getCheckMark(log.sleep)}</div>
+                        <div class="log-item"><strong>Socialized:</strong> ${getCheckMark(log.social)}</div>
+                        <div class="log-item"><strong>Healthy Meals:</strong> ${getCheckMark(log.healthy)}</div>
+                        ${log.notes ? `<div class="log-item" style="grid-column: 1 / -1;"><strong>Notes:</strong> ${log.notes}</div>` : ''}
+                        ${log.weather ? `
+                            <div class="log-item" style="grid-column: 1 / -1;">
+                                <strong>Weather:</strong> ${log.weather.city} | ${log.weather.desc} ${log.weather.weatherEmoji || ''} | ${log.weather.temp}°C (feels like ${log.weather.feelslike}°C)
+                                ${log.weather.weatherWarning ? `<br><span style="color:#d9534f; font-weight:bold;">${log.weather.weatherWarning}</span> ${log.weather.weatherTip || ''}` : ''}
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div class="suggestion-card">
+                        <h4>Insight & Suggestion:</h4>
+                        <p>${generateInsight(log)}</p>
+                    </div>
+                `;
+                summaryContainer.appendChild(summaryCard);
+            });
+        }
+
+        function getMoodEmoji(mood) {
+            switch (mood) {
+                case 1: return '😞';
+                case 2: return '😟';
+                case 3: return '😐';
+                case 4: return '😊';
+                case 5: return '😁';
+                default: return '❓';
+            }
+        }
+
+        function getMoodClass(mood) {
+            switch (mood) {
+                case 1: return 'mood-bad';
+                case 2: return 'mood-poor';
+                case 3: return 'mood-neutral';
+                case 4: return 'mood-good';
+                case 5: return 'mood-excellent';
+                default: return '';
+            }
+        }
+
+        function generateInsight(log) {
+            let insight = "Reflect on your day. ";
+
+            if (log.mood <= 2) {
+                insight += "It seems like you had a challenging day. ";
+                if (!log.sleep) insight += "Prioritizing sleep might help improve your mood. ";
+                if (!log.exercise) insight += "Even light physical activity can boost your spirits. ";
+                if (!log.social) insight += "Connecting with others can make a difference. ";
+                if (!log.healthy) insight += "Consider a nutritious meal to support your well-being. ";
+            } else if (log.mood >= 4) {
+                insight += "Great job maintaining a positive mood! ";
+                if (log.exercise) insight += "Your exercise likely contributed to this! ";
+                if (log.sleep) insight += "Good sleep seems to be working for you. ";
+                if (log.social) insight += "Social connections are clearly beneficial. ";
+                if (log.healthy) insight += "Keep up the healthy eating habits! ";
+            } else {
+                insight += "A neutral day. ";
+                if (!log.sleep) insight += "Could more sleep help uplift your mood? ";
+                if (!log.exercise) insight += "Perhaps a walk or some exercise could add a spark. ";
+                if (!log.social) insight += "Reaching out to a friend might brighten your day. ";
+                if (!log.healthy) insight += "A balanced diet can sometimes improve energy and mood. ";
+            }
+
+            if (log.notes) {
+                insight += ` Your notes mention: "${log.notes}". Consider how this might relate to your mood.`;
+            }
+
+            return insight.trim();
+        }
+
+        // --- Initial Load Logic ---
+        window.addEventListener('load', function() {
+            checkAuth(); // Authenticate user and load their data
+            
+            // Weather: get city from storage or prompt
+            userCity = localStorage.getItem(`weatherCity_${currentUser.id}`) || null;
+            fetchAndDisplayWeather();
+
+            // Privacy/disclaimer agreement check
+            const agreedKey = `privacyAgreed_${currentUser.id}`;
+            if (!localStorage.getItem(agreedKey)) {
+                document.getElementById('privacy-banner').style.display = 'flex';
+            }
+
+            document.getElementById('privacy-agree-checkbox').addEventListener('change', function() {
+                document.getElementById('privacy-agree-btn').disabled = !this.checked;
+                document.getElementById('privacy-agree-btn').style.opacity = this.checked ? '1' : '0.5';
+                document.getElementById('privacy-agree-btn').style.cursor = this.checked ? 'pointer' : 'not-allowed';
+            });
+            // Initially disable the button
+            document.getElementById('privacy-agree-btn').disabled = true;
+            document.getElementById('privacy-agree-btn').style.opacity = '0.5';
+            document.getElementById('privacy-agree-btn').style.cursor = 'not-allowed';
+
+            document.getElementById('privacy-agree-btn').addEventListener('click', function() {
+                if (document.getElementById('privacy-agree-checkbox').checked) {
+                    localStorage.setItem(agreedKey, 'true');
+                    document.getElementById('privacy-banner').style.display = 'none';
+                } else {
+                    showMessage('You must agree to the privacy and disclaimer statements to continue.', 'error');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
