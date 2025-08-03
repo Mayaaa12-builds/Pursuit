@@ -240,8 +240,40 @@
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin: 20px 0;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        /* Chart Grid */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        /* Chart Container */
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            height: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-container h3 {
+            margin-bottom: 15px;
+            color: #333;
+            text-align: center;
+        }
+
+        .chart-container canvas {
+            flex: 1;
+            max-height: 350px;
+            width: 100% !important;
+            height: auto !important;
         }
 
         .stat-item {
@@ -315,6 +347,9 @@
             }
             .chart-grid {
                 grid-template-columns: 1fr;
+            }
+            .chart-container {
+                height: 300px;
             }
             .stats-grid {
                 grid-template-columns: 1fr;
@@ -876,18 +911,100 @@
         }
 
         // --- Data Management Functions ---
-        function loadDailyLogs() {
+        async function loadDailyLogs() {
             if (currentUser) {
-                const storedLogs = localStorage.getItem(`dailyLogs_${currentUser.id}`);
-                dailyLogs = storedLogs ? JSON.parse(storedLogs) : [];
+                try {
+                    // Try to load from CSV file first
+                    const response = await fetch('./data/daily_log.csv');
+                    if (response.ok) {
+                        const csvText = await response.text();
+                        const csvLogs = parseCSV(csvText);
+                        if (csvLogs.length > 0) {
+                            dailyLogs = csvLogs;
+                        } else {
+                            // Fallback to localStorage if CSV is empty
+                            const storedLogs = localStorage.getItem(`dailyLogs_${currentUser.id}`);
+                            dailyLogs = storedLogs ? JSON.parse(storedLogs) : [];
+                        }
+                    } else {
+                        // Fallback to localStorage if CSV file not found
+                        const storedLogs = localStorage.getItem(`dailyLogs_${currentUser.id}`);
+                        dailyLogs = storedLogs ? JSON.parse(storedLogs) : [];
+                    }
+                } catch (error) {
+                    console.log('Error loading CSV, using localStorage:', error);
+                    // Fallback to localStorage on any error
+                    const storedLogs = localStorage.getItem(`dailyLogs_${currentUser.id}`);
+                    dailyLogs = storedLogs ? JSON.parse(storedLogs) : [];
+                }
                 // Ensure logs are sorted by date descending for display
                 dailyLogs.sort((a, b) => new Date(b.date) - new Date(a.date));
             }
         }
 
+        function parseCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            if (lines.length <= 1) return []; // No data rows
+            
+            const headers = lines[0].split(',');
+            const logs = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                const values = parseCSVLine(lines[i]);
+                if (values.length >= 6) { // Ensure we have all required fields
+                    const log = {
+                        date: values[0], // LogDate
+                        mood: parseInt(values[1]), // MoodRating
+                        exercise: values[2].toLowerCase() === 'true', // HadExercise
+                        sleep: values[3].toLowerCase() === 'true', // GotEnoughSleep
+                        social: values[4].toLowerCase() === 'true', // HadSocialInteraction
+                        healthy: values[5].toLowerCase() === 'true', // AteHealthy
+                        notes: values[6] || '' // Notes (optional)
+                    };
+                    logs.push(log);
+                }
+            }
+            return logs;
+        }
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                
+                if (char === '"') {
+                    if (inQuotes && line[i + 1] === '"') {
+                        // Escaped quote
+                        current += '"';
+                        i++; // Skip next quote
+                    } else {
+                        // Toggle quote state
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    // End of field
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            
+            // Add the last field
+            result.push(current.trim());
+            return result;
+        }
+
         function saveDailyLogs() {
             if (currentUser) {
+                // Save to localStorage as backup
                 localStorage.setItem(`dailyLogs_${currentUser.id}`, JSON.stringify(dailyLogs));
+                
+                // Also save to CSV format (this will need server-side implementation)
+                // For now, we'll just save to localStorage
             }
         }
 
@@ -1210,7 +1327,192 @@
             }
 
             const recentLogs = dailyLogs.slice(0, 5); // Get the 5 most recent logs
+            
+            // Calculate average mood and statistics
+            const totalMood = recentLogs.reduce((sum, log) => sum + log.mood, 0);
+            const avgMood = (totalMood / recentLogs.length).toFixed(1);
+            const highestMood = Math.max(...recentLogs.map(log => log.mood));
+            const lowestMood = Math.min(...recentLogs.map(log => log.mood));
+            
+            // Calculate habit statistics
+            const habitStats = {
+                exercise: { count: 0, percentage: 0, emoji: '💪', name: 'Exercise', color: '#28a745' },
+                sleep: { count: 0, percentage: 0, emoji: '😴', name: 'Sleep (7+ hrs)', color: '#6f42c1' },
+                social: { count: 0, percentage: 0, emoji: '👥', name: 'Social', color: '#17a2b8' },
+                healthy: { count: 0, percentage: 0, emoji: '🥗', name: 'Healthy Meals', color: '#fd7e14' }
+            };
+            
+            recentLogs.forEach(log => {
+                if (log.exercise) habitStats.exercise.count++;
+                if (log.sleep) habitStats.sleep.count++;
+                if (log.social) habitStats.social.count++;
+                if (log.healthy) habitStats.healthy.count++;
+            });
+            
+            // Calculate percentages
+            Object.keys(habitStats).forEach(habit => {
+                habitStats[habit].percentage = Math.round((habitStats[habit].count / recentLogs.length) * 100);
+            });
+            
+            // Find best and worst performing habits
+            const sortedHabits = Object.entries(habitStats).sort((a, b) => b[1].percentage - a[1].percentage);
+            const bestHabit = sortedHabits[0];
+            const worstHabit = sortedHabits[sortedHabits.length - 1];
+            
+            // Generate comprehensive insight
+            let avgMoodInsight = "";
+            
+            // Base mood analysis
+            if (avgMood >= 4) {
+                avgMoodInsight = `Excellent! Your average mood of ${avgMood}/5 shows you're thriving. `;
+            } else if (avgMood >= 3) {
+                avgMoodInsight = `Good overall trend with an average mood of ${avgMood}/5. `;
+            } else if (avgMood >= 2) {
+                avgMoodInsight = `Your average mood of ${avgMood}/5 indicates room for improvement. `;
+            } else {
+                avgMoodInsight = `Your average mood of ${avgMood}/5 suggests you've had some challenging days. `;
+            }
+            
+            // Habit performance analysis
+            if (bestHabit[1].percentage >= 80) {
+                avgMoodInsight += `Your strongest habit is ${bestHabit[1].name} at ${bestHabit[1].percentage}% - this consistency is likely contributing to your well-being! `;
+            } else if (bestHabit[1].percentage >= 60) {
+                avgMoodInsight += `${bestHabit[1].name} is your most consistent habit at ${bestHabit[1].percentage}%, but there's room to strengthen it further. `;
+            } else {
+                avgMoodInsight += `Even your best habit (${bestHabit[1].name} at ${bestHabit[1].percentage}%) needs attention. `;
+            }
+            
+            // Worst habit analysis and suggestions
+            if (worstHabit[1].percentage <= 20) {
+                avgMoodInsight += `Your biggest opportunity is ${worstHabit[1].name} at only ${worstHabit[1].percentage}% - focusing here could significantly boost your mood. `;
+            } else if (worstHabit[1].percentage <= 40) {
+                avgMoodInsight += `${worstHabit[1].name} at ${worstHabit[1].percentage}% is your weakest area and deserves more attention. `;
+            }
+            
+            // Specific suggestions based on worst performing habit
+            if (worstHabit[0] === 'exercise' && worstHabit[1].percentage < 60) {
+                avgMoodInsight += "Try starting with just 10-15 minutes of daily movement - even a short walk can make a difference.";
+            } else if (worstHabit[0] === 'sleep' && worstHabit[1].percentage < 60) {
+                avgMoodInsight += "Prioritize a consistent bedtime routine - quality sleep is foundational to mood and energy.";
+            } else if (worstHabit[0] === 'social' && worstHabit[1].percentage < 60) {
+                avgMoodInsight += "Consider reaching out to one person daily, even a quick text can boost your social connection.";
+            } else if (worstHabit[0] === 'healthy' && worstHabit[1].percentage < 60) {
+                avgMoodInsight += "Focus on adding one nutritious meal or snack daily - small changes in nutrition can impact mood significantly.";
+            }
+            
+            // Mood consistency insight
+            if (highestMood - lowestMood >= 3) {
+                avgMoodInsight += ` Your mood range (${lowestMood}-${highestMood}) shows significant variation - look for patterns between your best days and habit completion.`;
+            } else if (highestMood - lowestMood <= 1) {
+                avgMoodInsight += ` Your consistent mood range (${lowestMood}-${highestMood}) shows good emotional stability.`;
+            }
+            
+            // Create visual habit chart
+            const habitChart = Object.entries(habitStats).map(([key, habit]) => {
+                const barColor = habit.percentage >= 80 ? '#28a745' : habit.percentage >= 60 ? '#ffc107' : habit.percentage >= 40 ? '#fd7e14' : '#dc3545';
+                return `
+                    <div style="margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                            <span style="font-weight: bold; color: white;">${habit.emoji} ${habit.name}</span>
+                            <span style="font-weight: bold; color: white;">${habit.percentage}%</span>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.2); border-radius: 10px; height: 20px; overflow: hidden;">
+                            <div style="background: ${barColor}; height: 100%; width: ${habit.percentage}%; border-radius: 10px; transition: width 0.3s ease; position: relative;">
+                                <div style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); color: white; font-size: 12px; font-weight: bold;">
+                                    ${habit.percentage >= 15 ? habit.count + '/' + recentLogs.length : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            // Create mood visualization
+            const moodBars = recentLogs.map((log, index) => {
+                const moodHeight = (log.mood / 5) * 100;
+                const moodColor = log.mood >= 4 ? '#28a745' : log.mood >= 3 ? '#ffc107' : log.mood >= 2 ? '#fd7e14' : '#dc3545';
+                const displayDate = new Date(Date.parse(log.date + 'T00:00:00-04:00')).toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric',
+                    timeZone: 'America/New_York'
+                });
+                return `
+                    <div style="display: flex; flex-direction: column; align-items: center; flex: 1;">
+                        <div style="height: 80px; width: 25px; background: rgba(255,255,255,0.2); border-radius: 12px; position: relative; margin-bottom: 5px;">
+                            <div style="position: absolute; bottom: 0; width: 100%; background: ${moodColor}; border-radius: 12px; height: ${moodHeight}%; transition: height 0.3s ease;"></div>
+                            <div style="position: absolute; top: -20px; left: 50%; transform: translateX(-50%); color: white; font-weight: bold; font-size: 12px;">${log.mood}</div>
+                        </div>
+                        <div style="color: rgba(255,255,255,0.8); font-size: 10px; text-align: center;">
+                            ${displayDate}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            // Create performance indicators
+            const performanceIndicators = `
+                <div style="display: flex; justify-content: space-around; margin: 20px 0; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 12px;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 5px;">${bestHabit[1].emoji}</div>
+                        <div style="color: black; font-weight: bold; font-size: 14px;">BEST</div>
+                        <div style="color: white; font-size: 12px;">${bestHabit[1].name}</div>
+                        <div style="color: white; font-weight: bold;">${bestHabit[1].percentage}%</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 5px;">${getMoodEmoji(Math.round(avgMood))}</div>
+                        <div style="color: black; font-weight: bold; font-size: 14px;">AVG MOOD</div>
+                        <div style="color: white; font-size: 12px;">5-Day Average</div>
+                        <div style="color: white; font-weight: bold;">${avgMood}/5</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 5px;">${worstHabit[1].emoji}</div>
+                        <div style="color: white; font-weight: bold; font-size: 14px;">FOCUS</div>
+                        <div style="color: white; font-size: 12px;">${worstHabit[1].name}</div>
+                        <div style="color: white; font-weight: bold;">${worstHabit[1].percentage}%</div>
+                    </div>
+                </div>
+            `;
+            
+            // Create average mood summary card
+            const avgMoodCard = document.createElement('div');
+            avgMoodCard.className = 'summary-card';
+            avgMoodCard.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+            avgMoodCard.style.color = 'white';
+            avgMoodCard.style.marginBottom = '20px';
+            avgMoodCard.innerHTML = `
+                <div class="summary-header">
+                    <div class="mood-indicator" style="background: rgba(255,255,255,0.2); color: white; font-size: 2em;">
+                        ${getMoodEmoji(Math.round(avgMood))}
+                    </div>
+                    <div>
+                        <h3 style="color: white; margin: 0;">5-Day Summary Dashboard</h3>
+                        <p style="color: rgba(255,255,255,0.9); margin: 5px 0;">Average Mood: ${avgMood} / 5</p>
+                        <p style="color: rgba(255,255,255,0.8); font-size: 0.9em; margin: 0;">Range: ${lowestMood} - ${highestMood}</p>
+                    </div>
+                </div>
+                
+                ${performanceIndicators}
+                
+                <div style="margin: 20px 0;">
+                    <h4 style="color: white; margin-bottom: 15px; text-align: center;">📊 Daily Mood Trend</h4>
+                    <div style="display: flex; justify-content: space-between; align-items: end; padding: 0 10px;">
+                        ${moodBars}
+                    </div>
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <h4 style="color: white; margin-bottom: 15px; text-align: center;">🎯 Habit Performance</h4>
+                    ${habitChart}
+                </div>
+                
+                <div class="suggestion-card" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);">
+                    <h4 style="color: white;">💡 Detailed Analysis & Recommendations:</h4>
+                    <p style="color: rgba(255,255,255,0.9);">${avgMoodInsight}</p>
+                </div>
+            `;
+            summaryContainer.appendChild(avgMoodCard);
 
+            // Add individual day cards
             recentLogs.forEach(log => {
                 const moodEmoji = getMoodEmoji(log.mood);
                 const moodClass = getMoodClass(log.mood);
@@ -1221,7 +1523,7 @@
                     <div class="summary-header">
                         <div class="mood-indicator ${moodClass}">${moodEmoji}</div>
                         <div>
-                            <h3>${new Date(log.date).toDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</h3>
+                            <h3>${new Date(Date.parse(log.date + 'T00:00:00-04:00')).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', timeZone: 'America/New_York' })}</h3>
                             <p>Mood: ${log.mood} / 5</p>
                         </div>
                     </div>
