@@ -8,21 +8,19 @@ Individuals often lack a simple, personalized tool to understand how their daily
 The Personal Habit & Mood Linker solves this by providing an easy-to-use platform for daily logging that then generates personalized insights, revealing the direct relationships between a user's routines and their emotional state.
 
 Features
-Daily Logging: A simple interface for users to manually input their mood rating and the status of various habits (e.g., exercise, sleep, social interaction) on a daily basis.
+Daily Logging: A simple interface for users to manually input their mood rating and the status of various habits (e.g., exercise, sleep, social interaction) on a daily basis. The system now also captures additional contextual data such as sleep hours, stress levels, and weather.
 
-Data Storage: All user data is stored locally in a CSV file, ensuring privacy and ease of use for beginners.
+Data Storage: All user data is now stored securely and efficiently in a local SQLite database, moving away from a simple CSV file. This allows for more robust data management and complex queries.
 
-Personalized Insights: The tool analyzes the stored data to provide correlations between habits and mood, offering actionable feedback such as:
-
-"Your average mood on days you exercised was 4.2/5, compared to 3.1/5 on days you didn't."
-
-"You typically report a mood of 4.5/5 when you get 7+ hours of sleep."
+Personalized Insights & Analytics: The tool analyzes the stored data to provide correlations between habits, mood, and contextual factors, offering actionable feedback and deeper analytical insights.
 
 Data-Driven Feedback Loop: The tool creates a direct feedback loop for self-improvement, allowing users to see the impact of their choices and proactively cultivate more positive routines.
 
 Installation & Setup
 Prerequisites
 Python 3.6 or higher installed.
+
+The sqlite3 library (typically comes pre-installed with Python).
 
 Steps
 Create a Project Directory:
@@ -46,11 +44,10 @@ source venv/bin/activate
 
 Create Project Structure:
 
-Create a data directory to store your data file.
-
 Create the main Python script file, main.py.
 
-mkdir data
+The SQLite database file (habit_tracker.db) will be created automatically when you run the application.
+
 touch main.py
 
 Run the Application:
